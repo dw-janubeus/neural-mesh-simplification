@@ -1,3 +1,4 @@
+import gc
 import os
 from typing import Optional
 
@@ -12,8 +13,9 @@ from ..utils import build_graph_from_mesh
 
 
 class MeshSimplificationDataset(Dataset):
-    def __init__(self, data_dir: str, transform: Optional[callable] = None):
+    def __init__(self, data_dir: str, preprocess: bool = False, transform: Optional[callable] = None):
         self.data_dir = data_dir
+        self.preprocess = preprocess
         self.transform = transform
         self.file_list = self._get_file_list()
 
@@ -30,12 +32,15 @@ class MeshSimplificationDataset(Dataset):
     def __getitem__(self, idx):
         file_path = os.path.join(self.data_dir, self.file_list[idx])
         mesh = load_mesh(file_path)
-        mesh = preprocess_mesh(mesh)
+
+        if self.preprocess:
+            mesh = preprocess_mesh(mesh)
 
         if self.transform:
             mesh = self.transform(mesh)
 
         data = mesh_to_tensor(mesh)
+        gc.collect()
         return data
 
 
@@ -83,7 +88,7 @@ def mesh_to_tensor(mesh: trimesh.Trimesh) -> Data:
 
     # Convert vertices and faces to tensors
     vertices_tensor = torch.tensor(mesh.vertices, dtype=torch.float32)
-    faces_tensor = torch.tensor(mesh.faces, dtype=torch.long)
+    faces_tensor = torch.tensor(mesh.faces, dtype=torch.long).t()
 
     # Build graph structure
     G = build_graph_from_mesh(mesh)
@@ -96,7 +101,7 @@ def mesh_to_tensor(mesh: trimesh.Trimesh) -> Data:
         x=vertices_tensor,
         pos=vertices_tensor,
         edge_index=edge_index,
-        face=faces_tensor.t(),
+        face=faces_tensor,
         num_nodes=len(mesh.vertices),
     )
 

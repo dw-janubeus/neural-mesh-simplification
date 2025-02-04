@@ -16,6 +16,7 @@ def parse_args():
                         help="Directory to save model checkpoints.")
     parser.add_argument("--resume", type=str, default=None, help="Path to a checkpoint to resume training from.")
     parser.add_argument("--debug", action='store_true', help="Show debug logs")
+    parser.add_argument("--monitor", action="store_true", help="Monitor CPU and memory usage")
     return parser.parse_args()
 
 
@@ -46,6 +47,9 @@ def main():
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig(level=logging.INFO)
+
+    if args.monitor:
+        config["monitor_resources"] = True
 
     trainer = Trainer(config)
 

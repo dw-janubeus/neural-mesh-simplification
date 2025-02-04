@@ -20,7 +20,11 @@ class NeuralMeshSimplification(nn.Module):
     ):
         super(NeuralMeshSimplification, self).__init__()
         self.device = device
-        self.point_sampler = PointSampler(input_dim, hidden_dim, num_layers)
+        self.point_sampler = PointSampler(
+            input_dim,
+            hidden_dim,
+            num_layers
+        ).to(self.device)
         self.edge_predictor = EdgePredictor(
             input_dim,
             hidden_channels=edge_hidden_dim,
@@ -122,6 +126,8 @@ class NeuralMeshSimplification(nn.Module):
         )
 
         # Sample points
+        x = x.to(self.device)
+        edge_index = edge_index.to(self.device)
         sampled_probs = self.point_sampler(x, edge_index)
         sampled_indices = self.point_sampler.sample(
             sampled_probs, num_samples=target_nodes
