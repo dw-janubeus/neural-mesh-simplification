@@ -79,13 +79,13 @@ class EdgePredictor(nn.Module):
 
         # Ensure indices are within bounds
         if row.numel() > 0:
-            assert torch.all(row < num_nodes) and torch.all(row >= 0), (
-                f"Row indices out of bounds: min={row.min()}, max={row.max()}, num_nodes={num_nodes}"
-            )
+            assert torch.all(row < num_nodes) and torch.all(
+                row >= 0
+            ), f"Row indices out of bounds: min={row.min()}, max={row.max()}, num_nodes={num_nodes}"
         if col.numel() > 0:
-            assert torch.all(col < num_nodes) and torch.all(col >= 0), (
-                f"Column indices out of bounds: min={col.min()}, max={col.max()}, num_nodes={num_nodes}"
-            )
+            assert torch.all(col < num_nodes) and torch.all(
+                col >= 0
+            ), f"Column indices out of bounds: min={col.min()}, max={col.max()}, num_nodes={num_nodes}"
 
         # Create sparse attention matrix
         S = SparseTensor(

@@ -24,8 +24,8 @@ class ProbabilisticSurfaceDistanceLoss(nn.Module):
         # Pad face probabilities once for both terms
         face_probabilities = torch.nn.functional.pad(
             face_probabilities,
-            (0, max(0, simplified_faces.shape[0] - face_probabilities.shape[0]))
-        )[:simplified_faces.shape[0]]
+            (0, max(0, simplified_faces.shape[0] - face_probabilities.shape[0])),
+        )[: simplified_faces.shape[0]]
 
         forward_term = self.compute_forward_term(
             original_vertices,
@@ -101,15 +101,12 @@ class ProbabilisticSurfaceDistanceLoss(nn.Module):
 
         # Step 1: Sample points from the simplified mesh
         sampled_points = self.sample_points_from_triangles(
-            simplified_vertices,
-            simplified_faces,
-            self.num_samples
+            simplified_vertices, simplified_faces, self.num_samples
         )
 
         # Step 2: Compute the minimum distance from each sampled point to the original mesh
         distances = self.compute_min_distances_to_original(
-            sampled_points,
-            original_vertices
+            sampled_points, original_vertices
         )
 
         # Normalize and scale distances
@@ -119,9 +116,7 @@ class ProbabilisticSurfaceDistanceLoss(nn.Module):
         del distances  # Free memory
 
         # Reshape face probabilities to match the sampled points
-        face_probs_expanded = face_probabilities.repeat_interleave(
-            self.num_samples
-        )
+        face_probs_expanded = face_probabilities.repeat_interleave(self.num_samples)
 
         # Compute weighted distances
         reverse_term = (face_probs_expanded * scaled_distances).sum()
@@ -129,24 +124,17 @@ class ProbabilisticSurfaceDistanceLoss(nn.Module):
         return reverse_term
 
     def sample_points_from_triangles(
-        self,
-        vertices: torch.Tensor,
-        faces: torch.Tensor,
-        num_samples: int
+        self, vertices: torch.Tensor, faces: torch.Tensor, num_samples: int
     ) -> torch.Tensor:
         """Vectorized point sampling from triangles"""
         num_faces = faces.shape[0]
         face_vertices = vertices[faces]
 
         # Generate random values for all samples at once
-        sqrt_r1 = torch.sqrt(torch.rand(
-            num_faces, num_samples, 1,
-            device=vertices.device
-        ))
-        r2 = torch.rand(
-            num_faces, num_samples, 1,
-            device=vertices.device
+        sqrt_r1 = torch.sqrt(
+            torch.rand(num_faces, num_samples, 1, device=vertices.device)
         )
+        r2 = torch.rand(num_faces, num_samples, 1, device=vertices.device)
 
         # Compute barycentric coordinates
         a = 1 - sqrt_r1
@@ -155,9 +143,9 @@ class ProbabilisticSurfaceDistanceLoss(nn.Module):
 
         # Compute samples using broadcasting
         samples = (
-            a * face_vertices[:, None, 0] +
-            b * face_vertices[:, None, 1] +
-            c * face_vertices[:, None, 2]
+            a * face_vertices[:, None, 0]
+            + b * face_vertices[:, None, 1]
+            + c * face_vertices[:, None, 2]
         )
 
         del a, b, c, sqrt_r1, r2, face_vertices  # Free memory
@@ -165,9 +153,7 @@ class ProbabilisticSurfaceDistanceLoss(nn.Module):
         return samples.reshape(-1, 3)
 
     def compute_min_distances_to_original(
-        self,
-        sampled_points: torch.Tensor,
-        target_vertices: torch.Tensor
+        self, sampled_points: torch.Tensor, target_vertices: torch.Tensor
     ) -> torch.Tensor:
         """Efficient batch distance computation using KNN"""
         # Convert to float32 for KNN
@@ -182,7 +168,9 @@ class ProbabilisticSurfaceDistanceLoss(nn.Module):
         return distances.view(-1).float()
 
     @staticmethod
-    def compute_squared_distances(points1: torch.Tensor, points2: torch.Tensor) -> torch.Tensor:
+    def compute_squared_distances(
+        points1: torch.Tensor, points2: torch.Tensor
+    ) -> torch.Tensor:
         """Compute squared distances efficiently using torch.cdist"""
         return torch.cdist(points1, points2, p=2).float()
 

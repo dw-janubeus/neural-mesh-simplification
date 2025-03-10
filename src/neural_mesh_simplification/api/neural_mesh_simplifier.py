@@ -8,14 +8,14 @@ from ..models import NeuralMeshSimplification
 
 class NeuralMeshSimplifier:
     def __init__(
-            self,
-            input_dim,
-            hidden_dim,
-            edge_hidden_dim,  # Separate hidden dim for edge predictor
-            num_layers,
-            k,
-            edge_k,
-            target_ratio
+        self,
+        input_dim,
+        hidden_dim,
+        edge_hidden_dim,  # Separate hidden dim for edge predictor
+        num_layers,
+        k,
+        edge_k,
+        target_ratio,
     ):
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
@@ -27,7 +27,9 @@ class NeuralMeshSimplifier:
         self.model = self._build_model()
 
     @classmethod
-    def using_model(cls, at_path: str, hidden_dim: int, edge_hidden_dim: int, map_location: str):
+    def using_model(
+        cls, at_path: str, hidden_dim: int, edge_hidden_dim: int, map_location: str
+    ):
         instance = cls(
             input_dim=3,
             hidden_dim=hidden_dim,
@@ -35,7 +37,7 @@ class NeuralMeshSimplifier:
             num_layers=3,
             k=15,
             edge_k=15,
-            target_ratio=0.5
+            target_ratio=0.5,
         )
         instance._load_model(at_path, map_location)
         return instance
@@ -48,11 +50,13 @@ class NeuralMeshSimplifier:
             num_layers=self.num_layers,
             k=self.k,
             edge_k=self.edge_k,
-            target_ratio=self.target_ratio
+            target_ratio=self.target_ratio,
         )
 
     def _load_model(self, checkpoint_path: str, map_location: str):
-        self.model.load_state_dict(torch.load(checkpoint_path, map_location=map_location))
+        self.model.load_state_dict(
+            torch.load(checkpoint_path, map_location=map_location)
+        )
 
     def simplify(self, mesh: trimesh.Trimesh) -> trimesh.Trimesh:
         # Preprocess the mesh (e.g. normalize, center)

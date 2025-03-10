@@ -12,7 +12,12 @@ from torch_geometric.loader import DataLoader
 from .resource_monitor import monitor_resources
 from ..data import MeshSimplificationDataset
 from ..losses import CombinedMeshSimplificationLoss
-from ..metrics import chamfer_distance, normal_consistency, edge_preservation, hausdorff_distance
+from ..metrics import (
+    chamfer_distance,
+    normal_consistency,
+    edge_preservation,
+    hausdorff_distance,
+)
 from ..models import NeuralMeshSimplification
 
 logger = logging.getLogger(__name__)
@@ -78,7 +83,7 @@ class Trainer:
         logger.info(f"Loading dataset from {self.config['data']['data_dir']}")
         dataset = MeshSimplificationDataset(
             data_dir=self.config["data"]["data_dir"],
-            preprocess=False  # Can be False, because data has been prepared before training
+            preprocess=False,  # Can be False, because data has been prepared before training
         )
         logger.debug(f"Dataset size: {len(dataset)}")
 
@@ -87,8 +92,9 @@ class Trainer:
         logger.info(f"Splitting dataset: {train_size} train, {val_size} validation")
 
         train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
-        assert len(val_dataset) > 0, \
-            f"There is not enough data to define an evaluation set. len(dataset)={len(dataset)}, train_size={train_size}, val_size={val_size}"
+        assert (
+            len(val_dataset) > 0
+        ), f"There is not enough data to define an evaluation set. len(dataset)={len(dataset)}, train_size={train_size}, val_size={val_size}"
 
         num_workers = self.config["training"].get("num_workers", os.cpu_count())
         logger.info(f"Using {num_workers} workers for data loading")
@@ -98,7 +104,7 @@ class Trainer:
             batch_size=self.config["training"]["batch_size"],
             shuffle=True,
             num_workers=num_workers,
-            follow_batch=["x", "pos"]
+            follow_batch=["x", "pos"],
         )
 
         val_loader = DataLoader(
@@ -106,7 +112,7 @@ class Trainer:
             batch_size=self.config["training"]["batch_size"],
             shuffle=False,
             num_workers=num_workers,
-            follow_batch=["x", "pos"]
+            follow_batch=["x", "pos"],
         )
         logger.info("Data loaders prepared successfully")
 
@@ -115,7 +121,9 @@ class Trainer:
     def train(self):
         if self.monitor_resources:
             main_pid = os.getpid()
-            self.monitor_process = Process(target=monitor_resources, args=(self.stop_event, main_pid))
+            self.monitor_process = Process(
+                target=monitor_resources, args=(self.stop_event, main_pid)
+            )
             self.monitor_process.start()
 
         try:
@@ -127,7 +135,9 @@ class Trainer:
                 )
 
                 val_loss = self._validate()
-                logging.info(f"Epoch [{epoch + 1}/{self.config['training']['num_epochs']}], Validation Loss: {val_loss}")
+                logging.info(
+                    f"Epoch [{epoch + 1}/{self.config['training']['num_epochs']}], Validation Loss: {val_loss}"
+                )
 
                 self.scheduler.step(val_loss)
 
@@ -181,7 +191,9 @@ class Trainer:
         return val_loss / len(self.val_loader)
 
     def _save_checkpoint(self, epoch: int, val_loss: float):
-        checkpoint_path = os.path.join(self.checkpoint_dir, f"checkpoint_epoch_{epoch + 1}.pth")
+        checkpoint_path = os.path.join(
+            self.checkpoint_dir, f"checkpoint_epoch_{epoch + 1}.pth"
+        )
 
         logging.debug(f"Saving checkpoint to {checkpoint_path}")
         torch.save(
@@ -201,7 +213,10 @@ class Trainer:
 
             # Remove old checkpoints to save space
             for old_checkpoint in os.listdir(self.checkpoint_dir):
-                if old_checkpoint.startswith("checkpoint_") and old_checkpoint != f"checkpoint_epoch_{epoch + 1}.pth":
+                if (
+                    old_checkpoint.startswith("checkpoint_")
+                    and old_checkpoint != f"checkpoint_epoch_{epoch + 1}.pth"
+                ):
                     os.remove(os.path.join(self.checkpoint_dir, old_checkpoint))
 
     def _early_stopping(self, val_loss: float) -> bool:
@@ -216,11 +231,15 @@ class Trainer:
         self.model.load_state_dict(checkpoint["model_state_dict"])
         self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         self.best_val_loss = checkpoint["val_loss"]
-        logging.info(f"Loaded checkpoint from {checkpoint_path} (epoch {checkpoint['epoch']})")
+        logging.info(
+            f"Loaded checkpoint from {checkpoint_path} (epoch {checkpoint['epoch']})"
+        )
 
     def log_metrics(self, metrics: Dict[str, float], epoch: int):
         log_message = f"Epoch [{epoch + 1}/{self.config['training']['num_epochs']}], "
-        log_message += ", ".join([f"{key}: {value:.4f}" for key, value in metrics.items()])
+        log_message += ", ".join(
+            [f"{key}: {value:.4f}" for key, value in metrics.items()]
+        )
         logging.info(log_message)
 
     def evaluate(self, data_loader: DataLoader) -> Dict[str, float]:
@@ -229,7 +248,7 @@ class Trainer:
             "chamfer_distance": 0.0,
             "normal_consistency": 0.0,
             "edge_preservation": 0.0,
-            "hausdorff_distance": 0.0
+            "hausdorff_distance": 0.0,
         }
         with torch.no_grad():
             for batch in data_loader:

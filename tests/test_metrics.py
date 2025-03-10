@@ -10,19 +10,19 @@ from neural_mesh_simplification.metrics.normal_consistency import normal_consist
 
 def create_cube_mesh(scale=1.0):
     vertices = (
-            np.array(
-                [
-                    [0, 0, 0],
-                    [1, 0, 0],
-                    [1, 1, 0],
-                    [0, 1, 0],
-                    [0, 0, 1],
-                    [1, 0, 1],
-                    [1, 1, 1],
-                    [0, 1, 1],
-                ]
-            )
-            * scale
+        np.array(
+            [
+                [0, 0, 0],
+                [1, 0, 0],
+                [1, 1, 0],
+                [0, 1, 0],
+                [0, 0, 1],
+                [1, 0, 1],
+                [1, 1, 1],
+                [0, 1, 1],
+            ]
+        )
+        * scale
     )
     faces = np.array(
         [
@@ -62,7 +62,7 @@ def test_chamfer_distance_different_meshes():
     dist = chamfer_distance(mesh1, mesh2)
 
     assert (
-            dist > 0
+        dist > 0
     ), f"Chamfer distance for different meshes should be greater than 0, got {dist}"
 
 
@@ -87,10 +87,10 @@ def test_edge_preservation():
     preservation_metric = edge_preservation(original_mesh, simplified_mesh)
 
     assert (
-            preservation_metric < 1.0
+        preservation_metric < 1.0
     ), f"Edge preservation metric should be less than 1.0, got {preservation_metric}"
     assert (
-            preservation_metric > 0.0
+        preservation_metric > 0.0
     ), f"Edge preservation metric should be greater than 0.0, got {preservation_metric}"
 
 
@@ -112,5 +112,5 @@ def test_hausdorff_distance_different_meshes():
     dist = hausdorff_distance(mesh1, mesh2)
 
     assert (
-            dist > 1.99
+        dist > 1.99
     ), f"Hausdorff distance for identical meshes should be 2, got {dist}"

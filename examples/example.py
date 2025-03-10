@@ -13,6 +13,7 @@ default_config_path = os.path.join(script_dir, "../configs/default.yaml")
 
 def load_config(config_path):
     import yaml
+
     with open(config_path, "r") as file:
         config = yaml.safe_load(file)
     return config
@@ -59,7 +60,7 @@ def cylinder_example(simplifier: NeuralMeshSimplifier):
 
 def mesh_dropbox_example(simplifier: NeuralMeshSimplifier):
     print(f"Loading all meshes of type '.obj' in folder '{data_dir}'")
-    mesh_files = [f for f in os.listdir(data_dir) if f.endswith('.obj')]
+    mesh_files = [f for f in os.listdir(data_dir) if f.endswith(".obj")]
 
     for file_name in mesh_files:
         mesh_path = os.path.join(data_dir, file_name)
@@ -72,10 +73,19 @@ def mesh_dropbox_example(simplifier: NeuralMeshSimplifier):
         simplified_scene = Scene()
 
         if isinstance(original_mesh, Trimesh):
-            print("Original: ", original_mesh.vertices.shape, original_mesh.edges.shape, original_mesh.faces.shape)
+            print(
+                "Original: ",
+                original_mesh.vertices.shape,
+                original_mesh.edges.shape,
+                original_mesh.faces.shape,
+            )
             simplified_geom = simplifier.simplify(original_mesh)
-            print("Simplified: ", simplified_geom.vertices.shape, simplified_geom.edges.shape,
-                  simplified_geom.faces.shape)
+            print(
+                "Simplified: ",
+                simplified_geom.vertices.shape,
+                simplified_geom.edges.shape,
+                simplified_geom.faces.shape,
+            )
 
             simplified_scene = simplified_geom
 
@@ -89,7 +99,9 @@ def mesh_dropbox_example(simplifier: NeuralMeshSimplifier):
                 # Add the simplified geometry to the new scene
                 simplified_scene.add_geometry(simplified_geom, geom_name=name)
         else:
-            raise ValueError("Invalid mesh type (expected Trimesh or Scene):", type(original_mesh))
+            raise ValueError(
+                "Invalid mesh type (expected Trimesh or Scene):", type(original_mesh)
+            )
 
         # Save the simplified mesh to file
         save_mesh_to_file(simplified_scene, f"simplified_{file_name}")
@@ -105,7 +117,7 @@ def main():
         num_layers=config["model"]["num_layers"],
         k=config["model"]["k"],
         edge_k=config["model"]["edge_k"],
-        target_ratio=config["model"]["target_ratio"]
+        target_ratio=config["model"]["target_ratio"],
     )
 
     # cube_example(simplifier)

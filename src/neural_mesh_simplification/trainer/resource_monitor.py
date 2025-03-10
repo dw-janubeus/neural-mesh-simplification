@@ -21,7 +21,9 @@ def monitor_resources(stop_event, main_pid):
                 try:
                     cpu_percent += child.cpu_percent(interval=None)
                     child_memory = child.memory_info()
-                    total_memory_rss += child_memory.rss  # Add child process memory usage
+                    total_memory_rss += (
+                        child_memory.rss
+                    )  # Add child process memory usage
                 except psutil.NoSuchProcess:
                     pass  # Child process no longer exists
 
@@ -36,9 +38,15 @@ def monitor_resources(stop_event, main_pid):
                 gpu_info = []
                 for i in range(torch.cuda.device_count()):
                     gpu_util = torch.cuda.utilization(i)  # GPU Utilization
-                    mem_alloc = torch.cuda.memory_allocated(i) / (1024 * 1024)  # Convert to MB
-                    mem_total = torch.cuda.get_device_properties(i).total_memory / (1024 * 1024)  # Total VRAM
-                    gpu_info.append(f"GPU {i}: {gpu_util:.1f}% | Mem: {mem_alloc:.2f}/{mem_total:.2f} MB")
+                    mem_alloc = torch.cuda.memory_allocated(i) / (
+                        1024 * 1024
+                    )  # Convert to MB
+                    mem_total = torch.cuda.get_device_properties(i).total_memory / (
+                        1024 * 1024
+                    )  # Total VRAM
+                    gpu_info.append(
+                        f"GPU {i}: {gpu_util:.1f}% | Mem: {mem_alloc:.2f}/{mem_total:.2f} MB"
+                    )
 
                     output += " | " + " | ".join(gpu_info)
 

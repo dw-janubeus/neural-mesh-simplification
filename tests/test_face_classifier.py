@@ -73,7 +73,7 @@ def test_face_classifier_knn_graph(face_classifier):
     for i in range(num_faces):
         actual_neighbors = edge_index[1][edge_index[0] == i]
         assert (
-                len(actual_neighbors) >= face_classifier.k
+            len(actual_neighbors) >= face_classifier.k
         ), f"Face {i} has {len(actual_neighbors)} neighbors, which is less than {face_classifier.k}"
 
     # Verify that the graph is symmetric

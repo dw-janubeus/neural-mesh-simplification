@@ -53,7 +53,7 @@ def main():
     )
 
     args = parser.parse_args()
-    
+
     target_folder = args.target_folder if args.target_folder else "data/raw"
     if not os.path.exists(target_folder):
         os.makedirs(target_folder)

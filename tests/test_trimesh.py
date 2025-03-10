@@ -1,6 +1,7 @@
 import trimesh
 import pytest
 
+
 @pytest.mark.trimesh
 class TestMeshCreation:
     def test_sphere(self):

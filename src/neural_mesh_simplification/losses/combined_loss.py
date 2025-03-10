@@ -16,7 +16,7 @@ class CombinedMeshSimplificationLoss(nn.Module):
         lambda_c: float = 1.0,
         lambda_e: float = 1.0,
         lambda_o: float = 1.0,
-        device=device("cpu")
+        device=device("cpu"),
     ):
         super().__init__()
         self.device = device
@@ -62,11 +62,15 @@ class CombinedMeshSimplificationLoss(nn.Module):
             sampled_faces,
             face_probs,
         )
-        edge_crossing_loss = self.edge_crossing_loss(sampled_vertices, sampled_faces, face_probs)
+        edge_crossing_loss = self.edge_crossing_loss(
+            sampled_vertices, sampled_faces, face_probs
+        )
 
         del face_probs
 
-        overlapping_triangles_loss = self.overlapping_triangles_loss(sampled_vertices, sampled_faces)
+        overlapping_triangles_loss = self.overlapping_triangles_loss(
+            sampled_vertices, sampled_faces
+        )
 
         del sampled_vertices
         del sampled_faces

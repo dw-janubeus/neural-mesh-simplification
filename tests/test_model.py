@@ -33,7 +33,7 @@ def test_neural_mesh_simplification_forward(sample_data: Data):
         num_layers=3,
         k=3,  # Reduce k to avoid too many edges in the test
         edge_k=15,
-        target_ratio=0.5  # Ensure we sample roughly half the vertices
+        target_ratio=0.5,  # Ensure we sample roughly half the vertices
     )
 
     # First test point sampling
@@ -120,7 +120,7 @@ def test_generate_candidate_triangles():
         num_layers=3,
         k=5,
         edge_k=15,
-        target_ratio=0.5
+        target_ratio=0.5,
     )
     edge_index = torch.tensor(
         [[0, 1, 1, 2, 3, 4], [1, 0, 2, 1, 4, 3]], dtype=torch.long

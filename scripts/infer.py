@@ -2,20 +2,51 @@ import argparse
 
 from trimesh import Trimesh
 
-from neural_mesh_simplification import NeuralMeshSimplifier  # Assuming the model class is named MeshSimplifier
+from neural_mesh_simplification import (
+    NeuralMeshSimplifier,
+)  # Assuming the model class is named MeshSimplifier
 from neural_mesh_simplification.data.dataset import load_mesh
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Simplify a 3D mesh using a trained model.")
-    parser.add_argument('--input-file', type=str, required=True, help="Path to the input mesh file.")
-    parser.add_argument('--output-file', type=str, required=True, help="Where to save the simplified mesh.")
-    parser.add_argument('--hidden-dim', type=int, required=False, default=128,
-                        help="Feature dimension for point sampler and face classifier")
-    parser.add_argument('--edge-hidden-dim', type=int, required=False, default=64,
-                        help="Feature dimension for edge predictor")
-    parser.add_argument('--model-checkpoint', type=str, required=True, help="Path to the trained model checkpoint.")
-    parser.add_argument('--device', type=str, default='cpu', help="Device to use for inference (`cpu` or `cuda`).")
+    parser = argparse.ArgumentParser(
+        description="Simplify a 3D mesh using a trained model."
+    )
+    parser.add_argument(
+        "--input-file", type=str, required=True, help="Path to the input mesh file."
+    )
+    parser.add_argument(
+        "--output-file",
+        type=str,
+        required=True,
+        help="Where to save the simplified mesh.",
+    )
+    parser.add_argument(
+        "--hidden-dim",
+        type=int,
+        required=False,
+        default=128,
+        help="Feature dimension for point sampler and face classifier",
+    )
+    parser.add_argument(
+        "--edge-hidden-dim",
+        type=int,
+        required=False,
+        default=64,
+        help="Feature dimension for edge predictor",
+    )
+    parser.add_argument(
+        "--model-checkpoint",
+        type=str,
+        required=True,
+        help="Path to the trained model checkpoint.",
+    )
+    parser.add_argument(
+        "--device",
+        type=str,
+        default="cpu",
+        help="Device to use for inference (`cpu` or `cuda`).",
+    )
 
     return parser.parse_args()
 
@@ -26,7 +57,7 @@ def simplify_mesh(
     model_checkpoint: str,
     hidden_dim: int,
     edge_hidden_dim: int,
-    device='cpu'
+    device="cpu",
 ):
     """
     Simplifies a 3D mesh using a trained model.
@@ -44,7 +75,7 @@ def simplify_mesh(
         model_checkpoint,
         hidden_dim=hidden_dim,
         edge_hidden_dim=edge_hidden_dim,
-        map_location=device
+        map_location=device,
     )
     simplifier.model.to(device)
     simplifier.model.eval()
@@ -66,6 +97,7 @@ def simplify_mesh(
 
 def load_config(config_path):
     import yaml
+
     with open(config_path, "r") as file:
         config = yaml.safe_load(file)
     return config
@@ -80,7 +112,7 @@ def main():
         model_checkpoint=args.model_checkpoint,
         hidden_dim=args.hidden_dim,
         edge_hidden_dim=args.edge_hidden_dim,
-        device=args.device
+        device=args.device,
     )
 
 

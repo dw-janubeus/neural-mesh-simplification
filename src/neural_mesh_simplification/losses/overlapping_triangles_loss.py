@@ -22,7 +22,9 @@ class OverlappingTrianglesLoss(nn.Module):
             return torch.tensor(0.0, device=vertices.device)
 
         # 1. Sample points from each triangle
-        sampled_points, point_face_indices = self.sample_points_from_triangles(vertices, faces)
+        sampled_points, point_face_indices = self.sample_points_from_triangles(
+            vertices, faces
+        )
 
         # 2. Find k-nearest triangles for each point
         nearest_triangles = self.find_nearest_triangles(sampled_points, vertices, faces)
@@ -35,9 +37,7 @@ class OverlappingTrianglesLoss(nn.Module):
         return overlap_penalty
 
     def sample_points_from_triangles(
-        self,
-        vertices: torch.Tensor,
-        faces: torch.Tensor
+        self, vertices: torch.Tensor, faces: torch.Tensor
     ) -> (torch.Tensor, torch.Tensor):
         """
         Samples points from each triangle in the mesh.
@@ -65,11 +65,7 @@ class OverlappingTrianglesLoss(nn.Module):
         w = 1 - u - v
 
         # Calculate the coordinates of the sampled points
-        points = (
-            v0.unsqueeze(1) * w +
-            v1.unsqueeze(1) * u +
-            v2.unsqueeze(1) * v
-        )
+        points = v0.unsqueeze(1) * w + v1.unsqueeze(1) * u + v2.unsqueeze(1) * v
 
         # Create index mapping from points to their original faces
         point_face_indices = torch.arange(faces.shape[0], device=vertices.device)
@@ -81,10 +77,7 @@ class OverlappingTrianglesLoss(nn.Module):
         return points, point_face_indices
 
     def find_nearest_triangles(
-        self,
-        sampled_points: torch.Tensor,
-        vertices: torch.Tensor,
-        faces: torch.Tensor
+        self, sampled_points: torch.Tensor, vertices: torch.Tensor, faces: torch.Tensor
     ) -> torch.Tensor:
         """
         Finds the k-nearest triangles for each sampled point.
@@ -122,7 +115,7 @@ class OverlappingTrianglesLoss(nn.Module):
         vertices: torch.Tensor,
         faces: torch.Tensor,
         nearest_triangles: torch.Tensor,
-        point_face_indices: torch.Tensor
+        point_face_indices: torch.Tensor,
     ) -> torch.Tensor:
         """
         Calculates the overlap loss by checking if sampled points belong to multiple triangles.
@@ -170,7 +163,7 @@ class OverlappingTrianglesLoss(nn.Module):
         del p_v0, normals
 
         # Calculate barycentric coordinates
-        denom = (dot00 * dot00 - dot01 * dot01)
+        denom = dot00 * dot00 - dot01 * dot01
         u = (dot00 * dot0p - dot01 * dot02) / (denom + 1e-8)
         v = (dot00 * dot02 - dot01 * dot0p) / (denom + 1e-8)
 
@@ -195,8 +188,7 @@ class OverlappingTrianglesLoss(nn.Module):
 
             # Calculate areas using cross product
             cross_prod = torch.linalg.cross(
-                relevant_v1 - relevant_v0,
-                relevant_v2 - relevant_v0
+                relevant_v1 - relevant_v0, relevant_v2 - relevant_v0
             )
             areas[where_inside] = 0.5 * torch.norm(cross_prod, dim=1)
 

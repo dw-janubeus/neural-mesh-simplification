@@ -13,7 +13,12 @@ from ..utils import build_graph_from_mesh
 
 
 class MeshSimplificationDataset(Dataset):
-    def __init__(self, data_dir: str, preprocess: bool = False, transform: Optional[callable] = None):
+    def __init__(
+        self,
+        data_dir: str,
+        preprocess: bool = False,
+        transform: Optional[callable] = None,
+    ):
         self.data_dir = data_dir
         self.preprocess = preprocess
         self.transform = transform

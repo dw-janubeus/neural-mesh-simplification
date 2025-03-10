@@ -9,10 +9,7 @@ class EdgeCrossingLoss(nn.Module):
         self.k = k  # Number of nearest triangles to consider
 
     def forward(
-        self,
-        vertices: torch.Tensor,
-        faces: torch.Tensor,
-        face_probs: torch.Tensor
+        self, vertices: torch.Tensor, faces: torch.Tensor, face_probs: torch.Tensor
     ) -> torch.Tensor:
         # If no faces, return zero loss
         if faces.shape[0] == 0:
@@ -86,9 +83,15 @@ class EdgeCrossingLoss(nn.Module):
             neighbor_edges = edge_vectors(faces[nearest_triangles[i]])
             for j in range(3):
                 edge = edges[i, j].unsqueeze(0).unsqueeze(0)
-                cross_product = torch.cross(edge.expand(neighbor_edges.shape), neighbor_edges, dim=-1)
-                t = torch.sum(cross_product * neighbor_edges, dim=-1) / torch.sum(cross_product * edge.expand(neighbor_edges.shape), dim=-1)
-                u = torch.sum(cross_product * edges[i].unsqueeze(0), dim=-1) / torch.sum(cross_product * edge.expand(neighbor_edges.shape), dim=-1)
+                cross_product = torch.cross(
+                    edge.expand(neighbor_edges.shape), neighbor_edges, dim=-1
+                )
+                t = torch.sum(cross_product * neighbor_edges, dim=-1) / torch.sum(
+                    cross_product * edge.expand(neighbor_edges.shape), dim=-1
+                )
+                u = torch.sum(
+                    cross_product * edges[i].unsqueeze(0), dim=-1
+                ) / torch.sum(cross_product * edge.expand(neighbor_edges.shape), dim=-1)
                 mask = (t >= 0) & (t <= 1) & (u >= 0) & (u <= 1)
                 crossings[i] += mask.sum()
 

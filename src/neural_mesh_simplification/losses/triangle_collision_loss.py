@@ -114,7 +114,7 @@ class TriangleCollisionLoss(nn.Module):
         adjacent = torch.tensor(
             [len(set(face.tolist()) & set(nf.tolist())) >= 2 for nf in nearby_faces],
             dtype=torch.bool,
-            device=v0.device
+            device=v0.device,
         )
 
         collisions = intersections & ~adjacent
