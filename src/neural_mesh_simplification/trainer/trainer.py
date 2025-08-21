@@ -168,6 +168,7 @@ class Trainer:
 
         for batch_idx, batch in enumerate(self.train_loader):
             logger.debug(f"Processing batch {batch_idx + 1}")
+            batch = batch.to(self.device) # Move batch to device
             self.optimizer.zero_grad()
             output = self.model(batch)
             loss = self.criterion(batch, output)
@@ -186,6 +187,7 @@ class Trainer:
         val_loss = 0.0
         with torch.no_grad():
             for batch in self.val_loader:
+                batch = batch.to(self.device) # Move batch to device
                 output = self.model(batch)
                 loss = self.criterion(batch, output)
                 val_loss += loss.item()
