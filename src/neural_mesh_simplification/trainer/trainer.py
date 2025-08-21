@@ -127,7 +127,9 @@ class Trainer:
             self.monitor_process.start()
 
         try:
+            logger.debug("Starting training in Trainer")
             for epoch in range(self.config["training"]["num_epochs"]):
+                logger.debug(f"Training epoch {epoch}.")
                 loss = self._train_one_epoch(epoch)
 
                 logging.info(
