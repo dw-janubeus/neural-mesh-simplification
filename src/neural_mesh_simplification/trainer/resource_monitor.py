@@ -36,14 +36,15 @@ def monitor_resources(stop_event, main_pid):
             # Get GPU and GPU memory usage
             if torch.cuda.is_available():
                 gpu_info = []
+                mem_total = 14.74 * 1024**3
                 for i in range(torch.cuda.device_count()):
                     gpu_util = torch.cuda.utilization(i)  # GPU Utilization
                     mem_alloc = torch.cuda.memory_allocated(i) / (
                         1024 * 1024
                     )  # Convert to MB
-                    mem_total = torch.cuda.get_device_properties(i).total_memory / (
-                        1024 * 1024
-                    )  # Total VRAM
+                    # mem_total = torch.cuda.get_device_properties(i).total_memory / (
+                        # 1024 * 1024
+                    # )  # Total VRAM
                     gpu_info.append(
                         f"GPU {i}: {gpu_util:.1f}% | Mem: {mem_alloc:.2f}/{mem_total:.2f} MB"
                     )
