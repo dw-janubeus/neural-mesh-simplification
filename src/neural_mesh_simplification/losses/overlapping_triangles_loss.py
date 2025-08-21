@@ -177,7 +177,7 @@ class OverlappingTrianglesLoss(nn.Module):
         inside_mask = inside_mask & ~source_mask
 
         # Calculate areas only for inside points
-        areas = torch.zeros_like(inside_mask, dtype=torch.float32)
+        areas = torch.zeros_like(inside_mask, dtype=torch.float32, device=vertices.device)
         where_inside = torch.where(inside_mask)
 
         if where_inside[0].numel() > 0:

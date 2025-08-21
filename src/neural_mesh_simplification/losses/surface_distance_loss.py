@@ -24,7 +24,7 @@ class ProbabilisticSurfaceDistanceLoss(nn.Module):
         # Pad face probabilities once for both terms
         face_probabilities = torch.nn.functional.pad(
             face_probabilities,
-            (0, max(0, simplified_faces.shape[0] - face_probabilities.shape[0])),
+            (0, max(0, simplified_faces.shape[0] - face_probabilities.shape[0])), 
         )[: simplified_faces.shape[0]]
 
         forward_term = self.compute_forward_term(
