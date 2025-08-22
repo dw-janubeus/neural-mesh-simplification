@@ -7,7 +7,7 @@ import torch
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import random_split
-from torch_geometric.loader import DataLoader
+from torch_geometric.loader import DataLoader # pyright: ignore[reportMissingImports]
 
 from .resource_monitor import monitor_resources
 from ..data import MeshSimplificationDataset
@@ -53,7 +53,7 @@ class Trainer:
             weight_decay=config["training"]["weight_decay"],
         )
         self.scheduler = ReduceLROnPlateau(
-            self.optimizer, mode="min", factor=0.1, patience=10, verbose=True
+            self.optimizer, mode="min", factor=0.1, patience=10
         )
         self.criterion = CombinedMeshSimplificationLoss(
             lambda_c=config["loss"]["lambda_c"],
@@ -158,7 +158,7 @@ class Trainer:
         finally:
             if self.monitor_resources:
                 self.stop_event.set()
-                self.monitor_process.join()
+                self.monitor_process.join() # pyright: ignore[reportOptionalMemberAccess]
                 print()  # New line after monitoring output
 
     def _train_one_epoch(self, epoch: int) -> float:
@@ -168,7 +168,7 @@ class Trainer:
 
         for batch_idx, batch in enumerate(self.train_loader):
             logger.debug(f"Processing batch {batch_idx + 1}")
-            batch = batch.to(self.device) # Move batch to device
+            batch = batch.to(self.device)  # Move batch to device
             self.optimizer.zero_grad()
             output = self.model(batch)
             loss = self.criterion(batch, output)
@@ -187,7 +187,7 @@ class Trainer:
         val_loss = 0.0
         with torch.no_grad():
             for batch in self.val_loader:
-                batch = batch.to(self.device) # Move batch to device
+                batch = batch.to(self.device)  # Move batch to device
                 output = self.model(batch)
                 loss = self.criterion(batch, output)
                 val_loss += loss.item()
