@@ -72,7 +72,6 @@ sudo apt-get install -y \
     git \
     wget \
     curl \
-    libgl1-mesa-glx \
     libglib2.0-0 \
     libsm6 \
     libxext6 \
