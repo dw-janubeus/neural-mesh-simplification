@@ -42,8 +42,13 @@ mixed_precision: true        # Enable mixed precision training for speed
 gradient_accumulation_steps: 2 # Effective batch size = batch_size * accumulation_steps = 16
 compile_model: false         # Disable torch.compile for compatibility (enable if PyTorch 2.0+)
 
-# Resource monitoring
+# Resource monitoring - Enhanced monitoring system
 monitor_resources: true
+monitoring:
+  update_interval: 1.0        # Update frequency in seconds
+  show_detailed: true         # Show detailed I/O and network stats
+  enable_io_monitoring: false # Enable disk/network I/O monitoring (can be expensive)
+  dashboard_style: true       # Use clean dashboard display format
 
 # Debug settings (comment out for full training)
 # debug_subset_size: 100     # Use only 100 samples for quick testing

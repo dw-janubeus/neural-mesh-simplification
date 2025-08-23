@@ -22,7 +22,7 @@ from torch.optim import Adam, AdamW
 from torch.optim.lr_scheduler import ReduceLROnPlateau, CosineAnnealingLR
 from torch.utils.data import DataLoader, random_split
 
-from .resource_monitor import monitor_resources
+from .improved_resource_monitor import ImprovedResourceMonitor
 from ..data.optimized_dataset import OptimizedMeshSimplificationDataset, collate_mesh_data, DataAugmentation
 from ..losses import CombinedMeshSimplificationLoss
 from ..metrics import (
@@ -46,6 +46,7 @@ class OptimizedTrainer:
     - Optimized batch size and data loading
     - Gradient accumulation (larger effective batch sizes)
     - Better memory management
+    - Improved resource monitoring with GPUtil
     """
     
     def __init__(self, config: Dict[str, Any]):
@@ -99,14 +100,9 @@ class OptimizedTrainer:
         logger.info("Preparing optimized data loaders...")
         self.train_loader, self.val_loader = self._prepare_optimized_data_loaders()
         
-        # Resource monitoring setup
-        if config.get("monitor_resources", False):
-            logger.info("Resource monitoring enabled")
-            self.monitor_resources = True
-            self.stop_event = Event()
-            self.monitor_process = None
-        else:
-            self.monitor_resources = False
+        # Resource monitoring setup - improved version
+        self.monitor_resources = config.get("monitor_resources", False)
+        self.resource_monitor = None
         
         # Training metrics
         self.training_stats = {
@@ -307,13 +303,17 @@ class OptimizedTrainer:
         return train_loader, val_loader
     
     def train(self):
-        """Main training loop with optimizations."""
+        """Main training loop with optimizations and improved monitoring."""
+        # Initialize improved resource monitoring
         if self.monitor_resources:
             main_pid = os.getpid()
-            self.monitor_process = Process(
-                target=monitor_resources, args=(self.stop_event, main_pid)
+            self.resource_monitor = ImprovedResourceMonitor(
+                main_pid=main_pid,
+                update_interval=1.0,
+                show_detailed=True
             )
-            self.monitor_process.start()
+            self.resource_monitor.start_monitoring()
+            logger.info("Improved resource monitoring started")
         
         try:
             logger.info("Starting optimized training loop...")
@@ -321,11 +321,27 @@ class OptimizedTrainer:
             for epoch in range(self.config["training"]["num_epochs"]):
                 epoch_start_time = time.time()
                 
+                # Signal epoch start to monitor
+                if self.resource_monitor:
+                    self.resource_monitor.start_epoch()
+                
                 # Training phase
                 train_loss = self._train_one_epoch(epoch)
                 
                 # Validation phase
                 val_loss = self._validate()
+                
+                # Update monitoring with current metrics
+                if self.resource_monitor:
+                    current_lr = self.optimizer.param_groups[0]['lr']
+                    self.resource_monitor.update_training_progress(
+                        epoch=epoch + 1,
+                        batch=len(self.train_loader),  # End of epoch
+                        total_batches=len(self.train_loader),
+                        train_loss=train_loss,
+                        val_loss=val_loss,
+                        learning_rate=current_lr
+                    )
                 
                 # Update learning rate scheduler
                 if isinstance(self.scheduler, ReduceLROnPlateau):
@@ -366,9 +382,9 @@ class OptimizedTrainer:
             raise e
             
         finally:
-            if self.monitor_resources and self.monitor_process:
-                self.stop_event.set()
-                self.monitor_process.join()
+            # Stop improved resource monitoring
+            if self.resource_monitor:
+                self.resource_monitor.stop_monitoring()
                 print()  # New line after monitoring output
             
             # Final statistics
@@ -383,11 +399,16 @@ class OptimizedTrainer:
         self.model.train()
         running_loss = 0.0
         num_batches = 0
+        total_batches = len(self.train_loader)
         
         # Reset gradients for accumulation
         self.optimizer.zero_grad()
         
         for batch_idx, batch in enumerate(self.train_loader):
+            # Signal batch start to monitor
+            if self.resource_monitor:
+                self.resource_monitor.start_batch()
+            
             batch = batch.to(self.device, non_blocking=True)
             
             # Forward pass with optional mixed precision
@@ -420,6 +441,22 @@ class OptimizedTrainer:
             
             running_loss += loss.item() * self.gradient_accumulation_steps
             num_batches += 1
+            
+            # Signal batch end to monitor
+            if self.resource_monitor:
+                self.resource_monitor.end_batch(batch.num_graphs if hasattr(batch, 'num_graphs') else self.config["training"]["batch_size"])
+                
+                # Update training progress periodically
+                if batch_idx % 10 == 0:  # Update every 10 batches
+                    current_lr = self.optimizer.param_groups[0]['lr']
+                    current_loss = running_loss / num_batches if num_batches > 0 else 0.0
+                    self.resource_monitor.update_training_progress(
+                        epoch=epoch + 1,
+                        batch=batch_idx,
+                        total_batches=total_batches,
+                        train_loss=current_loss,
+                        learning_rate=current_lr
+                    )
             
             # Clean up batch to save memory
             del batch, output, loss
@@ -508,10 +545,20 @@ class OptimizedTrainer:
         if not self.training_stats['epoch_times']:
             return {}
         
-        return {
+        summary = {
             'total_epochs': len(self.training_stats['epoch_times']),
             'total_time': sum(self.training_stats['epoch_times']),
             'avg_epoch_time': sum(self.training_stats['epoch_times']) / len(self.training_stats['epoch_times']),
             'best_val_loss': self.best_val_loss,
             'final_lr': self.training_stats['learning_rates'][-1] if self.training_stats['learning_rates'] else 0,
         }
+        
+        # Add resource monitoring summary if available
+        if self.resource_monitor:
+            current_stats = self.resource_monitor.get_current_stats()
+            summary['resource_monitoring'] = {
+                'gpu_available': current_stats['gpu_available'],
+                'gpu_count': current_stats['gpu_count'],
+            }
+        
+        return summary
