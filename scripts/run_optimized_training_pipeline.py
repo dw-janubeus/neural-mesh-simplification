@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """
-Complete Neural Mesh Simplification Training Pipeline
+Complete Neural Mesh Simplification Optimized Training Pipeline
 
-This script handles the entire workflow:
+This script orchestrates the entire optimized workflow:
 1. Download dataset from Hugging Face (if needed)
-2. Preprocess the raw mesh data (if needed)  
-3. Train the neural mesh simplification model
+2. Preprocess the raw mesh data using the optimized preprocessor (if needed)
+3. Train the neural mesh simplification model using the optimized trainer
 
-The script includes smart skip logic to avoid redundant work.
+The script includes smart skip logic to avoid redundant work and leverages
+the performance improvements from the optimized components.
 """
 
 import argparse
@@ -21,6 +22,14 @@ from tqdm import tqdm
 import yaml # pyright: ignore[reportMissingModuleSource]
 import torch
 
+# Add project root to path
+script_dir = Path(__file__).parent.absolute()
+project_root = script_dir.parent
+sys.path.insert(0, str(project_root))
+
+from scripts.preprocess_data_optimized import OptimizedMeshPreprocessor
+from src.neural_mesh_simplification.trainer.optimized_trainer import OptimizedTrainer
+
 
 def setup_logging(debug=False):
     """Setup logging configuration."""
@@ -33,11 +42,16 @@ def setup_logging(debug=False):
     return logging.getLogger(__name__)
 
 
-def check_data_exists(data_dir, file_extension):
-    """Check if data directory exists and contains files with given extension."""
+def check_data_exists(data_dir, file_extension, check_metadata=False):
+    """Check if data directory exists and contains files with given extension or metadata."""
     if not os.path.exists(data_dir):
         return False
     
+    if check_metadata:
+        metadata_path = Path(data_dir) / "metadata" / "dataset_metadata.pkl"
+        if metadata_path.exists():
+            return True
+        
     files = [f for f in os.listdir(data_dir) if f.endswith(file_extension)]
     return len(files) > 0
 
@@ -96,13 +110,13 @@ def download_dataset(raw_data_dir, force_download=False):
         return False
 
 
-def preprocess_dataset(raw_data_dir, processed_data_dir, force_preprocess=False):
-    """Preprocess the downloaded mesh data."""
+def run_optimized_preprocessing(raw_data_dir, optimized_data_dir, force_preprocess=False):
+    """Run the optimized data preprocessing pipeline."""
     logger = logging.getLogger(__name__)
     
     # Check if processed data already exists
-    if not force_preprocess and check_data_exists(processed_data_dir, '.stl'):
-        logger.info(f"Processed data already exists in {processed_data_dir}, skipping preprocessing")
+    if not force_preprocess and check_data_exists(optimized_data_dir, '.pt', check_metadata=True):
+        logger.info(f"Optimized processed data already exists in {optimized_data_dir}, skipping preprocessing")
         return True
     
     # Check if raw data exists
@@ -110,71 +124,16 @@ def preprocess_dataset(raw_data_dir, processed_data_dir, force_preprocess=False)
         logger.error(f"No raw data found in {raw_data_dir}. Download dataset first.")
         return False
     
-    logger.info("Preprocessing mesh data...")
+    logger.info("Running optimized mesh data preprocessing...")
     
     try:
-        import networkx as nx
-        import trimesh # pyright: ignore[reportMissingImports]
-        from neural_mesh_simplification.data import MeshSimplificationDataset
-        from neural_mesh_simplification.data.dataset import load_mesh, preprocess_mesh
+        preprocessor = OptimizedMeshPreprocessor(raw_data_dir, optimized_data_dir)
+        preprocessor.preprocess_dataset()
+        logger.info("Optimized data preprocessing completed successfully")
+        return True
         
-        # Create output directory
-        os.makedirs(processed_data_dir, exist_ok=True)
-        
-        # Initialize dataset
-        dataset = MeshSimplificationDataset(data_dir=raw_data_dir)
-        
-        processed_count = 0
-        skipped_count = 0
-        
-        for idx in tqdm(range(len(dataset)), desc="Processing meshes"):
-            file_path = os.path.join(dataset.data_dir, dataset.file_list[idx])
-            
-            try:
-                mesh = load_mesh(file_path)
-                if mesh is None:
-                    logger.warning(f"Failed to load mesh: {dataset.file_list[idx]}")
-                    skipped_count += 1
-                    continue
-                
-                # Preprocess mesh
-                mesh = preprocess_mesh(mesh)
-                if mesh is None:
-                    logger.warning(f"Failed to preprocess mesh: {dataset.file_list[idx]}")
-                    skipped_count += 1
-                    continue
-                
-                # Check connectivity
-                face_adjacency = trimesh.graph.face_adjacency(mesh.faces)
-                G = nx.Graph()
-                G.add_edges_from(face_adjacency)
-                components = list(nx.connected_components(G))
-                
-                # Filter meshes with single connected component
-                if len(components) != 1:
-                    logger.debug(f"Skipping mesh with {len(components)} components: {dataset.file_list[idx]}")
-                    skipped_count += 1
-                    continue
-                
-                # Save processed mesh
-                output_file = os.path.join(processed_data_dir, dataset.file_list[idx])
-                output_file = output_file.replace(".ply", ".stl")
-                mesh.export(output_file)
-                processed_count += 1
-                
-            except Exception as e:
-                logger.warning(f"Error processing {dataset.file_list[idx]}: {e}")
-                skipped_count += 1
-                continue
-        
-        logger.info(f"Preprocessing complete: {processed_count} processed, {skipped_count} skipped")
-        return processed_count > 0
-        
-    except ImportError as e:
-        logger.error(f"Missing required libraries: {e}")
-        return False
     except Exception as e:
-        logger.error(f"Failed to preprocess data: {e}")
+        logger.error(f"Optimized data preprocessing failed: {e}")
         return False
 
 
@@ -196,26 +155,14 @@ def load_config(config_path):
         return None
 
 
-def run_training(config, checkpoint_dir, resume_checkpoint=None, monitor=False):
-    """Run the training process."""
+def run_optimized_training(config, resume_checkpoint=None):
+    """Run the optimized training process."""
     logger = logging.getLogger(__name__)
     
     try:
-        from neural_mesh_simplification.trainer import Trainer
-        
-        # Update config with checkpoint directory
-        config["training"]["checkpoint_dir"] = checkpoint_dir
-        
-        # Create checkpoint directory
-        os.makedirs(checkpoint_dir, exist_ok=True)
-        
-        # Add monitoring if requested
-        if monitor:
-            config["monitor_resources"] = True
-        
-        # Initialize trainer
-        logger.info("Initializing trainer...")
-        trainer = Trainer(config)
+        # Initialize optimized trainer
+        logger.info("Initializing optimized trainer...")
+        trainer = OptimizedTrainer(config)
         
         # Load checkpoint if resuming
         if resume_checkpoint:
@@ -226,35 +173,31 @@ def run_training(config, checkpoint_dir, resume_checkpoint=None, monitor=False):
                 logger.warning(f"Resume checkpoint not found: {resume_checkpoint}")
         
         # Start training
-        logger.info("Starting training...")
+        logger.info("Starting optimized training...")
         trainer.train()
         
-        logger.info("Training completed successfully!")
+        logger.info("Optimized training completed successfully!")
         return True
         
     except Exception as e:
-        logger.error(f"Training failed: {e}")
-        try:
-            # Try to save training state for recovery
-            state_file = os.path.join(checkpoint_dir, "training_state.pth")
-            trainer.save_training_state(state_file)
-            logger.info(f"Training state saved to {state_file}")
-        except:
-            pass
+        logger.error(f"Optimized training failed: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         return False
 
 
 def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
-        description="Complete Neural Mesh Simplification Training Pipeline",
+        description="Complete Neural Mesh Simplification Optimized Training Pipeline",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python run_training_pipeline.py                    # Run full pipeline with defaults
-  python run_training_pipeline.py --skip-download    # Skip download, start from preprocessing  
-  python run_training_pipeline.py --force-download   # Force re-download data
-  python run_training_pipeline.py --resume checkpoint.pth  # Resume training
+  python run_optimized_training_pipeline.py                    # Run full pipeline with optimized defaults
+  python run_optimized_training_pipeline.py --skip-download    # Skip download, start from preprocessing
+  python run_optimized_training_pipeline.py --force-download   # Force re-download data
+  python run_optimized_training_pipeline.py --resume data/checkpoints_optimized/checkpoint.pth  # Resume training
+  python run_optimized_training_pipeline.py --debug            # Run in debug mode with small dataset
         """
     )
     
@@ -267,10 +210,10 @@ Examples:
         help="Directory for raw mesh data (default: data/raw)"
     )
     data_group.add_argument(
-        "--processed-data-dir", 
+        "--optimized-data-dir", 
         type=str, 
-        default="data/processed",
-        help="Directory for processed mesh data (default: data/processed)"
+        default="data/processed_optimized",
+        help="Directory for optimized processed mesh data (default: data/processed_optimized)"
     )
     data_group.add_argument(
         "--force-download", 
@@ -280,7 +223,7 @@ Examples:
     data_group.add_argument(
         "--force-preprocess", 
         action="store_true",
-        help="Force re-preprocessing even if processed data exists"
+        help="Force re-preprocessing even if optimized processed data exists"
     )
     data_group.add_argument(
         "--skip-download", 
@@ -298,14 +241,14 @@ Examples:
     train_group.add_argument(
         "--config", 
         type=str, 
-        default="configs/default.yaml",
-        help="Path to training configuration file (default: configs/default.yaml)"
+        default="configs/optimized.yaml",
+        help="Path to optimized training configuration file (default: configs/optimized.yaml)"
     )
     train_group.add_argument(
         "--checkpoint-dir", 
         type=str, 
-        default="checkpoints",
-        help="Directory to save model checkpoints (default: checkpoints)"
+        default="data/checkpoints_optimized",
+        help="Directory to save model checkpoints (default: data/checkpoints_optimized)"
     )
     train_group.add_argument(
         "--resume", 
@@ -313,19 +256,13 @@ Examples:
         default=None,
         help="Path to checkpoint to resume training from"
     )
-    train_group.add_argument(
-        "--monitor", 
-        action="store_true", 
-        default=True,
-        help="Monitor CPU and memory usage during training (default: True)"
-    )
     
     # General arguments
     general_group = parser.add_argument_group('General Options')
     general_group.add_argument(
         "--debug", 
         action="store_true",
-        help="Enable debug logging"
+        help="Enable debug logging and use a small data subset for quick testing"
     )
     general_group.add_argument(
         "--dry-run", 
@@ -347,7 +284,7 @@ def main():
         logger.info("DRY RUN MODE - showing what would be executed")
     
     logger.info("=" * 60)
-    logger.info("Neural Mesh Simplification Training Pipeline")
+    logger.info("Neural Mesh Simplification Optimized Training Pipeline")
     logger.info("=" * 60)
     
     # Verify PyTorch availability
@@ -359,7 +296,7 @@ def main():
     # Step 1: Download dataset
     if not args.skip_download:
         logger.info("\n" + "=" * 40)
-        logger.info("STEP 1: Downloading Dataset")
+        logger.info("STEP 1: Downloading Raw Dataset")
         logger.info("=" * 40)
         
         if args.dry_run:
@@ -370,31 +307,31 @@ def main():
                 logger.error("Dataset download failed")
                 return 1
     else:
-        logger.info("Skipping dataset download as requested")
+        logger.info("Skipping raw dataset download as requested")
     
     # Step 2: Preprocess data
     if not args.skip_preprocess:
         logger.info("\n" + "=" * 40)
-        logger.info("STEP 2: Preprocessing Data")
+        logger.info("STEP 2: Optimized Data Preprocessing")
         logger.info("=" * 40)
         
         if args.dry_run:
-            logger.info(f"Would preprocess data from {args.raw_data_dir} to {args.processed_data_dir}")
+            logger.info(f"Would preprocess data from {args.raw_data_dir} to {args.optimized_data_dir}")
         else:
-            success = preprocess_dataset(
+            success = run_optimized_preprocessing(
                 args.raw_data_dir, 
-                args.processed_data_dir, 
+                args.optimized_data_dir, 
                 args.force_preprocess
             )
             if not success:
-                logger.error("Data preprocessing failed")
+                logger.error("Optimized data preprocessing failed")
                 return 1
     else:
-        logger.info("Skipping data preprocessing as requested")
+        logger.info("Skipping optimized data preprocessing as requested")
     
     # Step 3: Load configuration and run training
     logger.info("\n" + "=" * 40)
-    logger.info("STEP 3: Training Model")
+    logger.info("STEP 3: Training Model with Optimized Trainer")
     logger.info("=" * 40)
     
     # Load configuration
@@ -402,37 +339,44 @@ def main():
     if config is None:
         return 1
     
-    # Update config with processed data directory
-    config["data"]["data_dir"] = args.processed_data_dir
+    # Override config with CLI args
+    if args.debug:
+        config["debug_subset_size"] = 20
+        config["training"]["num_epochs"] = 3
+        config["training"]["early_stopping_patience"] = 2
+        logger.info("Debug mode enabled: using small data subset and fewer epochs")
+    
+    # Ensure optimized data directory is set in config for the trainer
+    config["data"]["optimized_data_dir"] = args.optimized_data_dir
+    config["training"]["checkpoint_dir"] = args.checkpoint_dir
     
     if args.dry_run:
         logger.info(f"Would train model with:")
-        logger.info(f"  Data directory: {args.processed_data_dir}")
+        logger.info(f"  Optimized Data directory: {args.optimized_data_dir}")
         logger.info(f"  Config: {args.config}")
         logger.info(f"  Checkpoints: {args.checkpoint_dir}")
         if args.resume:
             logger.info(f"  Resume from: {args.resume}")
-        logger.info(f"  Monitor: {args.monitor}")
+        logger.info(f"  Effective Batch Size: {config['training']['batch_size'] * config.get('gradient_accumulation_steps', 1)}")
+        logger.info(f"  Mixed Precision: {config.get('mixed_precision', True)}")
     else:
-        # Verify processed data exists
-        if not check_data_exists(args.processed_data_dir, '.stl'):
-            logger.error(f"No processed data found in {args.processed_data_dir}")
-            logger.error("Run preprocessing first or check data directories")
+        # Verify optimized processed data exists
+        if not check_data_exists(args.optimized_data_dir, '.pt', check_metadata=True):
+            logger.error(f"No optimized processed data found in {args.optimized_data_dir}")
+            logger.error("Run optimized preprocessing first or check data directories")
             return 1
         
-        success = run_training(
+        success = run_optimized_training(
             config,
-            args.checkpoint_dir,
             args.resume,
-            args.monitor
         )
         
         if not success:
-            logger.error("Training failed")
+            logger.error("Optimized training failed")
             return 1
     
     logger.info("\n" + "=" * 60)
-    logger.info("Pipeline completed successfully!")
+    logger.info("Optimized Training Pipeline completed successfully!")
     logger.info("=" * 60)
     return 0
 

@@ -12,7 +12,7 @@ from typing import Dict, List, Optional, Union
 
 import torch
 from torch.utils.data import Dataset
-from torch_geometric.data import Data
+from torch_geometric.data import Data # pyright: ignore[reportMissingImports]
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ class OptimizedMeshSimplificationDataset(Dataset):
     def __init__(
         self, 
         data_dir: Union[str, Path], 
-        transform: Optional[callable] = None,
+        transform: Optional[callable] = None, # pyright: ignore[reportGeneralTypeIssues]
         subset_size: Optional[int] = None,
         memory_mapping: bool = True
     ):
@@ -178,7 +178,7 @@ def collate_mesh_data(batch: List[Data]) -> Data:
     
     This function is optimized for PyTorch Geometric batching.
     """
-    from torch_geometric.data import Batch
+    from torch_geometric.data import Batch # pyright: ignore[reportMissingImports]
     
     try:
         # Use PyTorch Geometric's built-in batching

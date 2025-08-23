@@ -189,7 +189,7 @@ def check_system_requirements():
     if torch.cuda.is_available():
         logger.info(f"CUDA available: Yes")
         try:
-            logger.info(f"CUDA version: {torch.version.cuda}")
+            logger.info(f"CUDA version: {torch.version.cuda}") # pyright: ignore[reportAttributeAccessIssue]
         except:
             logger.info("CUDA version: Unknown")
         logger.info(f"GPU count: {torch.cuda.device_count()}")
@@ -201,7 +201,7 @@ def check_system_requirements():
     
     # Check for PyTorch Geometric
     try:
-        import torch_geometric
+        import torch_geometric # pyright: ignore[reportMissingImports]
         logger.info(f"PyTorch Geometric version: {torch_geometric.__version__}")
     except ImportError:
         logger.error("PyTorch Geometric not installed!")
