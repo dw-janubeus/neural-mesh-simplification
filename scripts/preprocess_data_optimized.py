@@ -72,12 +72,21 @@ class OptimizedMeshPreprocessor:
                 logger.debug(f"Skipping {file_path.name}: too many vertices ({len(mesh.vertices)})")
                 return None
                 
-            # Check if mesh is valid
-            if not mesh.is_valid:
-                mesh.fix_normals()
-                if not mesh.is_valid:
-                    logger.debug(f"Skipping {file_path.name}: invalid mesh")
+            # Check if mesh is reasonably valid (trimesh doesn't have is_valid)
+            try:
+                # Basic checks that can indicate mesh problems
+                if not mesh.is_watertight:
+                    logger.debug(f"Mesh {file_path.name} is not watertight but will proceed")
+                
+                # Ensure mesh has reasonable bounds
+                bounds = mesh.bounds
+                if bounds is None or np.any(~np.isfinite(bounds)):
+                    logger.debug(f"Skipping {file_path.name}: invalid bounds")
                     return None
+                    
+            except Exception as e:
+                logger.debug(f"Mesh validation warning for {file_path.name}: {e}")
+                # Continue anyway - many valid meshes might fail these checks
                     
             return mesh
             
