@@ -48,3 +48,7 @@ wheel==0.43.0
 xxhash==3.4.1
 yarl==1.9.4
 GPUtil
+torch>=2.0.0
+torch-geometric>=2.3.0
+torch-scatter>=2.1.0
+torch-sparse>=0.6.0
