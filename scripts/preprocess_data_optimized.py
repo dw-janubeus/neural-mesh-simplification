@@ -180,29 +180,39 @@ class OptimizedMeshPreprocessor:
         
         for file_path in tqdm(mesh_files, desc="Processing meshes"):
             file_id = file_path.stem  # filename without extension
+            logger.debug(f"Processing file: {file_path.name}")
             
             # Load and validate mesh
             mesh = self._load_and_validate_mesh(file_path)
             if mesh is None:
+                logger.debug(f"Skipped {file_path.name}: failed validation")
                 skipped_count += 1
                 continue
             
+            logger.debug(f"Loaded mesh {file_path.name}: {len(mesh.vertices)} vertices, {len(mesh.faces)} faces")
+            
             try:
                 # Preprocess mesh
+                logger.debug(f"Preprocessing mesh {file_path.name}")
                 mesh = self._preprocess_mesh(mesh)
                 
                 # Convert to tensor data
+                logger.debug(f"Converting mesh {file_path.name} to tensor")
                 data = self._mesh_to_tensor_data(mesh, file_id)
                 
                 # Save tensor data and collect metadata
+                logger.debug(f"Saving tensor data for {file_path.name}")
                 metadata = self._save_tensor_data(data, file_id)
                 metadata['original_file'] = str(file_path.name)
                 metadata_list.append(metadata)
                 
+                logger.debug(f"Successfully processed {file_path.name}")
                 processed_count += 1
                 
             except Exception as e:
-                logger.warning(f"Failed to process {file_path.name}: {e}")
+                logger.error(f"Failed to process {file_path.name}: {e}")
+                import traceback
+                logger.debug(traceback.format_exc())
                 skipped_count += 1
                 continue
         
