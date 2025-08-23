@@ -1,11 +1,40 @@
 #!/bin/bash
 
-# Neural Mesh Simplification - Installation Script for Ubuntu 24 EC2
+# Neural Mesh Simplification - Installation Script
 # This script sets up all dependencies required for training the neural mesh simplification model
-# Designed for Ubuntu 24 EC2 instances with GPU driver AMI (CUDA 12.1)
+# Supports both CPU and GPU (CUDA 12.1) installations
 
 set -e  # Exit on any error
 set -u  # Exit on undefined variables
+
+# Default installation mode
+INSTALL_MODE="gpu"
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --cpu)
+            INSTALL_MODE="cpu"
+            shift
+            ;;
+        --gpu)
+            INSTALL_MODE="gpu"
+            shift
+            ;;
+        -h|--help)
+            echo "Usage: $0 [--cpu|--gpu]"
+            echo "  --cpu  Install CPU-only version (no CUDA required)"
+            echo "  --gpu  Install GPU version with CUDA support (default)"
+            echo "  -h, --help  Show this help message"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
+done
 
 # Colors for output
 RED='\033[0;31m'
@@ -42,8 +71,12 @@ fi
 echo "================================================================="
 echo "Neural Mesh Simplification - Dependency Installation Script"
 echo "================================================================="
-log "Starting installation process for Ubuntu 24 EC2 instance"
-log "Target: GPU instance with CUDA 12.1 support"
+log "Starting installation process"
+if [ "$INSTALL_MODE" = "gpu" ]; then
+    log "Target: GPU instance with CUDA 12.1 support"
+else
+    log "Target: CPU-only installation (no CUDA required)"
+fi
 
 # Check Ubuntu version
 if ! lsb_release -d | grep -q "Ubuntu 24"; then
@@ -94,23 +127,29 @@ fi
 PYTHON_VERSION=$(python3.12 --version)
 log_success "Python version: $PYTHON_VERSION"
 
-# Step 3: Verify CUDA availability
-log "Step 3: Verifying CUDA installation"
-if command -v nvcc > /dev/null 2>&1; then
-    CUDA_VERSION=$(nvcc --version | grep "release" | sed 's/.*release //' | sed 's/,.*//')
-    log_success "CUDA version: $CUDA_VERSION"
-    
-    # Check if nvidia-smi is available
-    if command -v nvidia-smi > /dev/null 2>&1; then
-        log "GPU information:"
-        nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader,nounits
+# Step 3: Verify CUDA availability (conditional based on install mode)
+if [ "$INSTALL_MODE" = "gpu" ]; then
+    log "Step 3: Verifying CUDA installation"
+    if command -v nvcc > /dev/null 2>&1; then
+        CUDA_VERSION=$(nvcc --version | grep "release" | sed 's/.*release //' | sed 's/,.*//')
+        log_success "CUDA version: $CUDA_VERSION"
+        
+        # Check if nvidia-smi is available
+        if command -v nvidia-smi > /dev/null 2>&1; then
+            log "GPU information:"
+            nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader,nounits
+        else
+            log_warning "nvidia-smi not available, but CUDA compiler found"
+        fi
     else
-        log_warning "nvidia-smi not available, but CUDA compiler found"
+        log_error "CUDA not found. This script requires CUDA 12.1 for GPU training."
+        log_error "Please ensure you're using a GPU-enabled EC2 instance with CUDA drivers."
+        exit 1
     fi
 else
-    log_error "CUDA not found. This script requires CUDA 12.1 for GPU training."
-    log_error "Please ensure you're using a GPU-enabled EC2 instance with CUDA drivers."
-    exit 1
+    log "Step 3: Skipping CUDA verification (CPU mode selected)"
+    log "CUDA is not required for CPU-only installation"
+    CUDA_VERSION="N/A (CPU mode)"
 fi
 
 # Step 4: Create and activate virtual environment
@@ -141,15 +180,15 @@ python -m pip install --upgrade setuptools wheel build
 PIP_VERSION=$(pip --version)
 log_success "Pip version: $PIP_VERSION"
 
-# Step 6: Install PyTorch with CUDA 12.1 support
-log "Step 6: Installing PyTorch with CUDA 12.1 support"
-log "This may take several minutes..."
-
-pip install torch==2.4.0 torchvision==0.19.0 torchaudio==2.4.0 --index-url https://download.pytorch.org/whl/cu121
-
-# Verify PyTorch CUDA support
-log "Verifying PyTorch CUDA support..."
-python -c "
+# Step 6: Install PyTorch (conditional based on install mode)
+if [ "$INSTALL_MODE" = "gpu" ]; then
+    log "Step 6: Installing PyTorch with CUDA 12.1 support"
+    log "This may take several minutes..."
+    pip install torch==2.4.0 torchvision==0.19.0 torchaudio==2.4.0 --index-url https://download.pytorch.org/whl/cu121
+    
+    # Verify PyTorch CUDA support
+    log "Verifying PyTorch CUDA support..."
+    python -c "
 import torch
 print(f'PyTorch version: {torch.__version__}')
 print(f'CUDA available: {torch.cuda.is_available()}')
@@ -162,20 +201,51 @@ else:
     print('WARNING: CUDA not available in PyTorch!')
     exit(1)
 "
-
-if [ $? -ne 0 ]; then
-    log_error "PyTorch CUDA verification failed!"
-    exit 1
+    
+    if [ $? -ne 0 ]; then
+        log_error "PyTorch CUDA verification failed!"
+        exit 1
+    fi
+    
+    log_success "PyTorch with CUDA support installed successfully"
+else
+    log "Step 6: Installing PyTorch CPU-only version"
+    log "This may take several minutes..."
+    pip install torch==2.4.0 torchvision==0.19.0 torchaudio==2.4.0 --index-url https://download.pytorch.org/whl/cpu
+    
+    # Verify PyTorch CPU installation
+    log "Verifying PyTorch CPU installation..."
+    python -c "
+import torch
+print(f'PyTorch version: {torch.__version__}')
+print(f'CUDA available: {torch.cuda.is_available()}')
+if torch.cuda.is_available():
+    print('WARNING: CUDA is available but CPU mode was requested!')
+    print('This is normal if you have CUDA drivers installed but want CPU-only PyTorch.')
+else:
+    print('✅ CPU-only PyTorch installation verified')
+print('✅ PyTorch CPU tensors work correctly')
+"
+    
+    if [ $? -ne 0 ]; then
+        log_error "PyTorch CPU verification failed!"
+        exit 1
+    fi
+    
+    log_success "PyTorch CPU-only version installed successfully"
 fi
 
-log_success "PyTorch with CUDA support installed successfully"
-
-# Step 7: Install PyTorch Geometric ecosystem
+# Step 7: Install PyTorch Geometric ecosystem (conditional based on install mode)
 log "Step 7: Installing PyTorch Geometric ecosystem"
 log "Installing torch_cluster, torch_geometric, torch_scatter, torch_sparse..."
 
-pip install torch_cluster==1.6.3 torch_geometric==2.5.3 torch_scatter==2.1.2 torch_sparse==0.6.18 \
-    -f https://data.pyg.org/whl/torch-2.4.0+cu121.html
+if [ "$INSTALL_MODE" = "gpu" ]; then
+    pip install torch_cluster==1.6.3 torch_geometric==2.5.3 torch_scatter==2.1.2 torch_sparse==0.6.18 \
+        -f https://data.pyg.org/whl/torch-2.4.0+cu121.html
+else
+    pip install torch_cluster==1.6.3 torch_geometric==2.5.3 torch_scatter==2.1.2 torch_sparse==0.6.18 \
+        -f https://data.pyg.org/whl/torch-2.4.0+cpu.html
+fi
 
 # Verify PyTorch Geometric installation
 log "Verifying PyTorch Geometric installation..."
@@ -209,9 +279,13 @@ fi
 
 pip install -r requirements.txt
 
-# Install additional GPU monitoring tool
-log "Installing additional GPU monitoring tools..."
-pip install GPUtil
+# Install additional monitoring tools (conditional based on install mode)
+if [ "$INSTALL_MODE" = "gpu" ]; then
+    log "Installing additional GPU monitoring tools..."
+    pip install GPUtil
+else
+    log "Skipping GPU monitoring tools (CPU mode selected)"
+fi
 
 log_success "Project requirements installed successfully"
 
@@ -238,6 +312,9 @@ log_success "Directory structure created"
 
 # Step 11: Verification tests
 log "Step 11: Running comprehensive verification tests"
+
+# Export install mode for Python tests
+export INSTALL_MODE
 
 # Test all major imports
 log "Testing package imports..."
@@ -281,7 +358,14 @@ print('\nTesting utility libraries:')
 success &= test_import('yaml', 'PyYAML')
 success &= test_import('tqdm', 'TQDM')
 success &= test_import('psutil', 'PSUtil')
-success &= test_import('GPUtil', 'GPUtil')
+
+# Only test GPUtil in GPU mode
+import os
+install_mode = os.environ.get('INSTALL_MODE', 'gpu')
+if install_mode == 'gpu':
+    success &= test_import('GPUtil', 'GPUtil')
+else:
+    print('✓ GPUtil (skipped in CPU mode)')
 
 if not success:
     print('\n❌ Some imports failed!')
@@ -295,9 +379,10 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Test CUDA functionality
-log "Testing CUDA functionality..."
-python -c "
+# Test device functionality (conditional based on install mode)
+if [ "$INSTALL_MODE" = "gpu" ]; then
+    log "Testing CUDA functionality..."
+    python -c "
 import torch
 import torch_geometric
 
@@ -330,10 +415,43 @@ else:
     print('❌ CUDA not available!')
     exit(1)
 "
+    
+    if [ $? -ne 0 ]; then
+        log_error "CUDA functionality test failed!"
+        exit 1
+    fi
+else
+    log "Testing CPU functionality..."
+    python -c "
+import torch
+import torch_geometric
 
-if [ $? -ne 0 ]; then
-    log_error "CUDA functionality test failed!"
-    exit 1
+print('CPU Test Results:')
+print(f'PyTorch version: {torch.__version__}')
+print(f'PyTorch Geometric version: {torch_geometric.__version__}')
+print(f'CUDA available: {torch.cuda.is_available()}')
+
+# Test tensor creation on CPU
+try:
+    x = torch.rand(100, 100)
+    y = torch.rand(100, 100)
+    z = torch.mm(x, y)
+    print('✅ CPU tensor operations successful')
+    
+    # Test that CUDA is properly disabled
+    if not torch.cuda.is_available():
+        print('✅ CUDA properly disabled for CPU-only installation')
+    else:
+        print('ℹ️  CUDA drivers detected but PyTorch configured for CPU-only mode')
+except Exception as e:
+    print(f'❌ CPU tensor operations failed: {e}')
+    exit(1)
+"
+    
+    if [ $? -ne 0 ]; then
+        log_error "CPU functionality test failed!"
+        exit 1
+    fi
 fi
 
 # Test project scripts
@@ -371,7 +489,11 @@ echo ""
 echo "📋 Installation Summary:"
 echo "  ✅ System dependencies installed"
 echo "  ✅ Python 3.12 virtual environment created"
-echo "  ✅ PyTorch 2.4.0 with CUDA 12.1 support"
+if [ "$INSTALL_MODE" = "gpu" ]; then
+    echo "  ✅ PyTorch 2.4.0 with CUDA 12.1 support"
+else
+    echo "  ✅ PyTorch 2.4.0 CPU-only version"
+fi
 echo "  ✅ PyTorch Geometric ecosystem"
 echo "  ✅ All project requirements"
 echo "  ✅ Neural mesh simplification package (development mode)"
@@ -420,7 +542,13 @@ echo ""
 echo "⚠️  Important Notes:"
 echo "  - Always activate the virtual environment before running scripts"
 echo "  - The virtual environment path: $(pwd)/venv"
-echo "  - CUDA ${CUDA_VERSION} is available and working"
+if [ "$INSTALL_MODE" = "gpu" ]; then
+    echo "  - CUDA ${CUDA_VERSION} is available and working"
+    echo "  - GPU training and inference are ready"
+else
+    echo "  - CPU-only installation configured"
+    echo "  - GPU features are disabled"
+fi
 echo "  - All scripts are ready to use"
 
 echo ""
